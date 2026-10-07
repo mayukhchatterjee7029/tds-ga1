@@ -44,9 +44,8 @@ def get_config(set: list[str] = Query(default=[])):
         "workers": int(config["workers"]),
         "debug": parse_bool(config["debug"]),
         "log_level": str(config["log_level"]),
-        "api_key": "****" # Always masked
+        "api_key": "****"
     }
-    # 5. Query params (highest precedence)
     for item in set:
         if "=" in item:
             k, v = item.split("=", 1)
