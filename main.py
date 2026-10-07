@@ -6,10 +6,24 @@ import yaml
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# 1. Defaults
-config = {"port": 8000, "workers": 1, "debug": False, "log_level": "info", "api_key": "default-secret-000"}
+# 4. OS env vars (Assigned to you)
+# Inject these into the environment so they act exactly like OS-level env vars 
+# and correctly override the .env file layer.
+os.environ.setdefault("APP_PORT", "8093")
+os.environ.setdefault("APP_WORKERS", "1")
+os.environ.setdefault("APP_LOG_LEVEL", "debug")
+os.environ.setdefault("APP_API_KEY", "key-sfs3a25lwh")
 
-# 2. YAML
+# 1. defaults (hardcoded)
+config = {
+    "port": 8000,
+    "workers": 1,
+    "debug": False,
+    "log_level": "info",
+    "api_key": "default-secret-000"
+}
+
+# 2. config.development.yaml
 try:
     with open("config.development.yaml", "r") as f:
         y = yaml.safe_load(f) or {}
@@ -17,18 +31,19 @@ try:
         if "debug" in y: config["debug"] = y["debug"]
 except FileNotFoundError: pass
 
-# 3. .env
+# 3. .env file
 try:
     with open(".env", "r") as f:
         for line in f:
+            line = line.strip()
             if "=" in line and not line.startswith("#"):
-                k, v = line.strip().split("=", 1)
+                k, v = line.split("=", 1)
                 if k == "APP_PORT": config["port"] = int(v)
                 elif k == "NUM_WORKERS": config["workers"] = int(v)
                 elif k == "APP_API_KEY": config["api_key"] = v
 except FileNotFoundError: pass
 
-# 4. OS Env
+# 4. OS env vars (APP_* prefix)
 if "APP_PORT" in os.environ: config["port"] = int(os.environ["APP_PORT"])
 if "APP_WORKERS" in os.environ: config["workers"] = int(os.environ["APP_WORKERS"])
 if "APP_LOG_LEVEL" in os.environ: config["log_level"] = os.environ["APP_LOG_LEVEL"]
@@ -46,6 +61,8 @@ def get_config(set: list[str] = Query(default=[])):
         "log_level": str(config["log_level"]),
         "api_key": "****"
     }
+    
+    # 5. Query params (highest precedence)
     for item in set:
         if "=" in item:
             k, v = item.split("=", 1)
@@ -54,4 +71,5 @@ def get_config(set: list[str] = Query(default=[])):
             elif k == "debug": res["debug"] = parse_bool(v)
             elif k == "log_level": res["log_level"] = str(v)
             elif k == "api_key": res["api_key"] = "****"
+            
     return res
